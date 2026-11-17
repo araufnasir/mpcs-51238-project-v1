@@ -33,20 +33,23 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       >
         <body className="min-h-full flex flex-col">
-          <header className="flex items-center justify-between border-b border-black/10 px-6 py-4 dark:border-white/15">
+          <header className="flex items-center justify-between border-b border-black/10 px-4 py-3 sm:px-6 sm:py-4 dark:border-white/15">
             <Link href="/" className="text-lg font-semibold">
               Which Way
             </Link>
             <div className="flex items-center gap-3 text-sm">
               <Show when="signed-out">
-                <SignInButton />
-                <SignUpButton>
+                <SignInButton forceRedirectUrl="/decisions" signUpForceRedirectUrl="/decisions" />
+                <SignUpButton forceRedirectUrl="/decisions" signInForceRedirectUrl="/decisions">
                   <button className="rounded-md bg-foreground px-3 py-1.5 text-background">
                     Sign up
                   </button>
                 </SignUpButton>
               </Show>
               <Show when="signed-in">
+                <Link href="/decisions" className="font-medium hover:underline">
+                  My decisions
+                </Link>
                 <UserButton />
               </Show>
             </div>
