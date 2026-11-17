@@ -1,4 +1,13 @@
-import { RATINGS, type Criterion, type DecisionData, type Option, type Scores } from "./types";
+import { RATINGS, type Criterion, type DecisionData, type Option, type Scores } from "./types.ts";
+
+// Ids are always crypto.randomUUID(). Rejecting anything else also blocks keys like
+// "__proto__" / "constructor" that could pollute prototypes when used as object keys.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUuid = (id: string) => UUID.test(id);
+const own = (obj: unknown, key: string): unknown =>
+  obj && typeof obj === "object" && Object.hasOwn(obj, key)
+    ? (obj as Record<string, unknown>)[key]
+    : undefined;
 
 const clampRating = (n: unknown) =>
   typeof n === "number" && RATINGS.includes(n as (typeof RATINGS)[number]) ? n : null;
@@ -15,7 +24,7 @@ export function sanitizeDecisionData(input: unknown): DecisionData {
 
   const options: Option[] = (Array.isArray(raw.options) ? raw.options : [])
     .map((o) => ({ id: String(o?.id ?? ""), name: cleanName(o?.name) }))
-    .filter((o) => o.id && o.name)
+    .filter((o) => isUuid(o.id) && o.name)
     .slice(0, 20);
 
   const criteria: Criterion[] = (Array.isArray(raw.criteria) ? raw.criteria : [])
@@ -25,16 +34,18 @@ export function sanitizeDecisionData(input: unknown): DecisionData {
       weight: clampRating(c?.weight) ?? 3,
       kind: "rating" as const,
     }))
-    .filter((c) => c.id && c.name)
+    .filter((c) => isUuid(c.id) && c.name)
     .slice(0, 30);
 
-  const rawScores = (raw.scores ?? {}) as Record<string, Record<string, unknown>>;
+  // Only UUID keys from the cleaned options/criteria are ever written, read via own properties.
   const scores: Scores = {};
   for (const o of options) {
+    const row: Record<string, number> = {};
     for (const c of criteria) {
-      const s = clampRating(rawScores[o.id]?.[c.id]);
-      if (s != null) (scores[o.id] ??= {})[c.id] = s;
+      const s = clampRating(own(own(raw.scores, o.id), c.id));
+      if (s != null) row[c.id] = s;
     }
+    if (Object.keys(row).length) scores[o.id] = row;
   }
 
   return { options, criteria, scores };

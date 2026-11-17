@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { compare, summarize, topOptionIds, type Summary } from "@/lib/compare";
+import { compare, getScore, summarize, topOptionIds, type Summary } from "@/lib/compare";
 import { RATINGS, type DecisionData } from "@/lib/types";
 import { btn, input } from "@/lib/ui";
 import { saveDecision } from "../actions";
@@ -81,10 +81,13 @@ export function DecisionEditor({
     }));
   const setScore = (oid: string, cid: string, value: number | null) =>
     update((d) => {
-      const row = { ...d.scores[oid] };
-      if (value == null) delete row[cid];
-      else row[cid] = value;
-      return { ...d, scores: { ...d.scores, [oid]: row } };
+      // Computed keys in object literals define own properties, never the prototype.
+      const current = Object.hasOwn(d.scores, oid) ? d.scores[oid] : {};
+      const row = Object.fromEntries(Object.entries(current).filter(([k]) => k !== cid));
+      return {
+        ...d,
+        scores: { ...d.scores, [oid]: value == null ? row : { ...row, [cid]: value } },
+      };
     });
 
   const save = () => {
@@ -180,7 +183,7 @@ export function DecisionEditor({
                     {options.map((o) => (
                       <td key={o.id} className={`${cell} text-center`}>
                         <RatingSelect
-                          value={scores[o.id]?.[c.id] ?? null}
+                          value={getScore(scores, o.id, c.id) ?? null}
                           onChange={(v) => setScore(o.id, c.id, v)}
                           label={`${o.name}: ${c.name}`}
                           allowEmpty

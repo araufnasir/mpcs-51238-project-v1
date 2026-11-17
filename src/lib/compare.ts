@@ -1,4 +1,11 @@
-import type { DecisionData } from "./types";
+import type { DecisionData, Scores } from "./types";
+
+/** Reads a rating via own properties only, so keys like "__proto__" can't reach the prototype. */
+export function getScore(scores: Scores, optionId: string, criterionId: string): number | undefined {
+  if (!Object.hasOwn(scores, optionId)) return undefined;
+  const row = scores[optionId];
+  return Object.hasOwn(row, criterionId) ? row[criterionId] : undefined;
+}
 
 export type OptionResult = {
   optionId: string;
@@ -19,7 +26,7 @@ export function compare({ options, criteria, scores }: DecisionData): OptionResu
     let possible = 0;
     let rated = 0;
     for (const c of criteria) {
-      const score = scores[option.id]?.[c.id];
+      const score = getScore(scores, option.id, c.id);
       if (score == null) continue;
       earned += c.weight * score;
       possible += c.weight * 5;
